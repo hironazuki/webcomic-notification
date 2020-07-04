@@ -1,15 +1,22 @@
 import * as functions from "firebase-functions";
 import * as puppeteer from "puppeteer";
+import axios from "axios";
+const discord_url = functions.config().discord.webhook;
 
-// cloud functionでfirestoreを使うのに必要な設定は以下の２行
+const config = {
+  headers: {
+    Accept: "application/json",
+    "Content-type": "application/json",
+  },
+};
+
 const admin = require("firebase-admin");
 admin.initializeApp(functions.config().firebase);
+
 const fireStore = admin.firestore();
-// // Start writing Firebase Functions
-// // https://firebase.google.com/docs/functions/typescript
 //
 exports.scrapeWebComic = functions.pubsub
-  .schedule("every 1 hour")
+  .schedule("every 1 hours")
   .timeZone("Asia/Tokyo")
   .onRun(async (context) => {
     const browser = await puppeteer.launch({
@@ -18,11 +25,16 @@ exports.scrapeWebComic = functions.pubsub
     const cookies = [
       {
         name: "mylist",
-        value: "78963%2C78973%2C74734%2C101160",
-        domain: "webcomics.jp", // ドメイン（省略可）
-        path: "/", // パス（省略可）
+        value: "78963%2C78973%2C74734%2C101160%2C745",
+        domain: "webcomics.jp",
+        path: "/",
       },
     ];
+    // 78963   # メイドインアビス,
+    // 78973   # メイドインアビス公式アンソロジー,
+    // 74734   # 僕の心のヤバいやつ,
+    // 101160  # フードコートで、また明日。,
+    // 745     # 私がモテないのはどう考えてもお前らが悪い!
 
     const page = await browser.newPage();
     await page.setCookie(...cookies);
@@ -33,33 +45,25 @@ exports.scrapeWebComic = functions.pubsub
     await browser.close();
   });
 
-// const scrapeWebComic = async () => {
-//   const browser = await puppeteer.launch({
-//     args: ["--no-sandbox"],
-//   });
-//   const cookies = [
-//     {
-//       name: "mylist",
-//       value: "78963%2C78973%2C74734%2C101160",
-//       domain: "webcomics.jp", // ドメイン（省略可）
-//       path: "/", // パス（省略可）
-//     },
-//   ];
-
-//   const page = await browser.newPage();
-//   await page.setCookie(...cookies);
-//   await page.goto("https://webcomics.jp/mylist");
-//   const comics = await page.$$("#main > div.list > div.entry");
-//   await Promise.all(comics.map(async (comic) => await setComicData(comic)));
-
-//   await browser.close();
-// };
-
 const setComicData = async (comic: puppeteer.ElementHandle<Element>) => {
   // 漫画タイトル
   const comicNameTag = await comic.$("div.entry-title > a");
   const comicNameTextContent = await comicNameTag!.getProperty("textContent");
-  const comicNameEn = await comicNameTextContent.jsonValue();
+  let comicNameEn = await comicNameTextContent.jsonValue();
+  switch (comicNameEn) {
+    case "私がモテないのはどう考えてもお前らが悪い...":
+      comicNameEn = "私がモテないのはどう考えてもお前らが悪い!";
+      break;
+    default:
+      comicNameEn;
+  }
+  // if (comicNameEn === "私がモテないのはどう考えてもお前らが悪い...") {
+  // comicNameEn = "私がモテないのはどう考えてもお前らが悪い!";
+  // }
+  let comicNameNonSlash;
+  if (typeof comicNameEn === "string") {
+    comicNameNonSlash = comicNameEn.replace(/\//g, "-");
+  }
 
   // 漫画url
   const comicUrlHref = await comicNameTag!.getProperty("href");
@@ -78,39 +82,52 @@ const setComicData = async (comic: puppeteer.ElementHandle<Element>) => {
     "textContent"
   );
   const comicEpisodeEn = await comicEpisodeTextContent.jsonValue();
-  // let comicEpisodeEnTrim;
-  // if (typeof comicEpisodeEn === "string") {
-  //   comicEpisodeEnTrim = comicEpisodeEn.trim();
-  // }
+  let comicEpisodeTrim: string = "";
+  if (typeof comicEpisodeEn === "string") {
+    comicEpisodeTrim = comicEpisodeEn.trim();
+  }
+  let comicEpisodeNonSlash;
+  if (typeof comicEpisodeEn === "string") {
+    comicEpisodeNonSlash = comicEpisodeEn.trim().replace(/\//g, "-");
+  }
 
+  // エピソードurl
   const comicEpisodeUrlHref = await comicEpisodeTag!.getProperty("href");
   const comicEpisodeUrlEn = await comicEpisodeUrlHref.jsonValue();
+
+  // 更新日
+  const comicEpisodeDateTag = await comic.$("div.entry-date");
+  const comicEpisodeDateTextContent = await comicEpisodeDateTag!.getProperty(
+    "textContent"
+  );
+  const comicEpisodeDateEn = await comicEpisodeDateTextContent.jsonValue();
 
   // console.log("comicNameEn: ", comicNameEn);
   // console.log("comicUrlEn: ", comicUrlEn);
   // console.log("SerializationSiteEn: ", SerializationSiteEn);
+
+  // console.log("comicEpisodeEn: ", comicEpisodeEnTrim);
+  // console.log("comicEpisodeUrlEn: ", comicEpisodeUrlEn);
+  // console.log("UpdateDateEn: ", UpdateDateEn);
+
   const comicData = {
     name: comicNameEn,
     Serialization: SerializationSiteEn,
     url: comicUrlEn,
   };
-  // console.log("comicEpisodeEn: ", comicEpisodeEnTrim);
-  // console.log("comicEpisodeUrlEn: ", comicEpisodeUrlEn);
-  // console.log("UpdateDateEn: ", UpdateDateEn);
 
   const episodeData = {
-    name: comicEpisodeEn,
+    name: comicEpisodeTrim,
     url: comicEpisodeUrlEn,
-    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+    update_date: comicEpisodeDateEn,
   };
 
-  const comicRef = fireStore.collection("comics").doc(comicNameEn);
+  const comicRef = fireStore.collection("comics").doc(comicNameNonSlash);
   comicRef
     .get()
     .then((doc: any) => {
       if (!doc.exists) {
         comicRef.set(comicData);
-        // fireStore.collection("comics").doc(comicNameEn).set(comicData);
       }
     })
     .catch((err: any) => {
@@ -121,13 +138,30 @@ const setComicData = async (comic: puppeteer.ElementHandle<Element>) => {
     .collection("comics")
     .doc(comicNameEn)
     .collection("episodes")
-    .doc(comicEpisodeEn);
+    .doc(comicEpisodeNonSlash);
   episodeRef
     .get()
-    .then((doc: any) => {
+    .then(async (doc: any) => {
       if (!doc.exists) {
+        //送信するデータ
+
+        console.log(comicNameEn, comicEpisodeTrim);
+        const postData = {
+          username: "webcomic BOT",
+          content: `${comicNameEn}\n${comicEpisodeTrim}\n${comicEpisodeUrlEn}`,
+        };
+
+        const _sleep = (ms: number) =>
+          new Promise((resolve) => setTimeout(resolve, ms));
+
+        await _sleep(2000);
+        // // const main = async () => {
+        await axios.post(discord_url, postData, config);
+        // // };
+
+        // main();
+        // firestoreに保存
         episodeRef.set(episodeData);
-        // fireStore.collection("comics").doc(comicNameEn).set(comicData);
       }
     })
     .catch((err: any) => {

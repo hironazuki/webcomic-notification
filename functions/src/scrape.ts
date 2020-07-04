@@ -6,7 +6,7 @@
 //   const cookies = [
 //     {
 //       name: "mylist",
-//       value: "78963%2C78973%2C74734%2C101160",
+//       value: "78963%2C78973%2C74734%2C101160%2C745",
 //       domain: "webcomics.jp", // ドメイン（省略可）
 //       path: "/", // パス（省略可）
 //     },
@@ -45,12 +45,14 @@
 //   const comicEpisodeTextContent = await comicEpisodeTag!.getProperty(
 //     "textContent"
 //   );
-//   const comicEpisodeEn = await comicEpisodeTextContent.jsonValue();
-//   let comicEpisodeEnTrim;
+//   let comicEpisodeEn = await comicEpisodeTextContent.jsonValue();
 //   if (typeof comicEpisodeEn === "string") {
-//     comicEpisodeEnTrim = comicEpisodeEn.trim();
+//     comicEpisodeEn = comicEpisodeEn.trim();
 //   }
-
+//   let comicEpisodeNonSlash;
+//   if (typeof comicEpisodeEn === "string") {
+//     comicEpisodeNonSlash = comicEpisodeEn.replace(/\//g, "-");
+//   }
 //   const comicEpisodeUrlHref = await comicEpisodeTag!.getProperty("href");
 //   const comicEpisodeUrlEn = await comicEpisodeUrlHref.jsonValue();
 
@@ -63,7 +65,64 @@
 //   console.log("comicUrlEn: ", comicUrlEn);
 //   console.log("SerializationSiteEn: ", SerializationSiteEn);
 
-//   console.log("comicEpisodeEn: ", comicEpisodeEnTrim);
+//   console.log("comicEpisodeEn: ", comicEpisodeEn);
+//   console.log("comicEpisodeNonSlash", comicEpisodeNonSlash);
 //   console.log("comicEpisodeUrlEn: ", comicEpisodeUrlEn);
 //   console.log("UpdateDateEn: ", UpdateDateEn);
 // };
+
+// const PushBullet = require("pushbullet");
+// const pusher = new PushBullet(process.env.PUSHBULLET_CLIENT);
+
+// // pusher.note(
+// //   process.env.PUSHBULLET_IDENTIFIER,
+// //   "noteTitle",
+// //   "https://google.com"
+// // );
+// pusher.link(
+//   process.env.PUSHBULLET_IDENTIFIER,
+//   "GitHub",
+//   "https://github.com/",
+//   "Note body text"
+// );
+
+// require("dotenv").config();
+// import axios from "axios";
+// const discord_url = process.env.DISCORD_WEBHOOK_URL!;
+// console.log(process.env.DISCORD_WEBHOOK_URL);
+// //ヘッダーなどの設定
+// const config = {
+//   headers: {
+//     Accept: "application/json",
+//     "Content-type": "application/json",
+//   },
+// };
+
+// //送信するデータ
+// const postData = {
+//   username: "webcomic BOT",
+//   content: "Node.jsaaaからポスdotenvトして\n る \nよ :)",
+// };
+
+// const main = async () => {
+//   await axios.post(discord_url, postData, config);
+//   // console.log(res);
+// };
+
+// main();
+// const admin = require("firebase-admin");
+// let serviceAccount = require("../../comic-notification-8c150-91eb54977881");
+
+// admin.initializeApp({
+//   credential: admin.credential.cert(serviceAccount),
+// });
+
+// let db = admin.firestore();
+
+// let docRef = db.collection("users").doc("alovelace");
+
+// let setAda = docRef.set({
+//   first: "Ada",
+//   last: "Lovelace",
+//   born: 1815,
+// });
