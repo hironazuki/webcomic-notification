@@ -14,7 +14,7 @@ const admin = require("firebase-admin");
 admin.initializeApp(functions.config().firebase);
 
 const fireStore = admin.firestore();
-//
+
 exports.scrapeWebComic = functions.pubsub
   .schedule("every 1 hours")
   .timeZone("Asia/Tokyo")
@@ -25,7 +25,7 @@ exports.scrapeWebComic = functions.pubsub
     const cookies = [
       {
         name: "mylist",
-        value: "78963%2C78973%2C74734%2C101160%2C745",
+        value: "78963%2C78973%2C74734%2C101160%2C745%2C87665",
         domain: "webcomics.jp",
         path: "/",
       },
@@ -35,6 +35,7 @@ exports.scrapeWebComic = functions.pubsub
     // 74734   # 僕の心のヤバいやつ,
     // 101160  # フードコートで、また明日。,
     // 745     # 私がモテないのはどう考えてもお前らが悪い!
+    // 87665   # SPY×FAMILY
 
     const page = await browser.newPage();
     await page.setCookie(...cookies);
@@ -57,9 +58,7 @@ const setComicData = async (comic: puppeteer.ElementHandle<Element>) => {
     default:
       comicNameEn;
   }
-  // if (comicNameEn === "私がモテないのはどう考えてもお前らが悪い...") {
-  // comicNameEn = "私がモテないのはどう考えてもお前らが悪い!";
-  // }
+
   let comicNameNonSlash;
   if (typeof comicNameEn === "string") {
     comicNameNonSlash = comicNameEn.replace(/\//g, "-");
@@ -102,14 +101,6 @@ const setComicData = async (comic: puppeteer.ElementHandle<Element>) => {
   );
   const comicEpisodeDateEn = await comicEpisodeDateTextContent.jsonValue();
 
-  // console.log("comicNameEn: ", comicNameEn);
-  // console.log("comicUrlEn: ", comicUrlEn);
-  // console.log("SerializationSiteEn: ", SerializationSiteEn);
-
-  // console.log("comicEpisodeEn: ", comicEpisodeEnTrim);
-  // console.log("comicEpisodeUrlEn: ", comicEpisodeUrlEn);
-  // console.log("UpdateDateEn: ", UpdateDateEn);
-
   const comicData = {
     name: comicNameEn,
     Serialization: SerializationSiteEn,
@@ -143,23 +134,23 @@ const setComicData = async (comic: puppeteer.ElementHandle<Element>) => {
     .get()
     .then(async (doc: any) => {
       if (!doc.exists) {
-        //送信するデータ
-
         console.log(comicNameEn, comicEpisodeTrim);
+
+        //送信するデータ
         const postData = {
           username: "webcomic BOT",
-          content: `${comicNameEn}\n${comicEpisodeTrim}\n${comicEpisodeUrlEn}`,
+          content: `@everyone \n${comicNameEn}\n${comicEpisodeTrim}\n${comicEpisodeUrlEn}`,
         };
 
+        // 2秒スリープ
         const _sleep = (ms: number) =>
           new Promise((resolve) => setTimeout(resolve, ms));
 
         await _sleep(2000);
-        // // const main = async () => {
-        await axios.post(discord_url, postData, config);
-        // // };
 
-        // main();
+        // web hookでdiscordに通知
+        await axios.post(discord_url, postData, config);
+
         // firestoreに保存
         episodeRef.set(episodeData);
       }
