@@ -152,7 +152,7 @@ const setComicData = async (comic: puppeteer.ElementHandle<Element>) => {
         await axios.post(discord_url, postData, config);
 
         // firestoreに保存
-        episodeRef.set(episodeData);
+        await episodeRef.set(episodeData);
       }
     })
     .catch((err: any) => {
