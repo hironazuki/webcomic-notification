@@ -1,11 +1,17 @@
-require("dotenv").config();
+import * as functions from "firebase-functions";
+import axios from "axios";
+
+const config = {
+  headers: {
+    Accept: "application/json",
+    "Content-type": "application/json",
+  },
+};
+
 const admin = require("firebase-admin");
-let serviceAccount = require("../../../comic-notification-8c150-91eb54977881.json");
+const discord_url = functions.config().discord.webhook;
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
-
+admin.initializeApp(functions.config().firebase);
 const fireStore = admin.firestore();
 
 type ComicData = {
@@ -51,10 +57,20 @@ const setFirestore = async (data: ComicData[]) => {
 
           console.log(d.comicData.name, d.episodeData.name);
 
+          //送信するデータ
+          const postData = {
+            username: "webcomic BOT",
+            content: `@everyone \n${d.comicData.name}\n${d.episodeData.name}\n${d.episodeData.url}`,
+          };
+
+          // 2秒スリープ
           const _sleep = (ms: number) =>
             new Promise((resolve) => setTimeout(resolve, ms));
 
           await _sleep(2000);
+
+          // web hookでdiscordに通知
+          await axios.post(discord_url, postData, config);
           // firestoreに保存
           await episodeRef.set(d.episodeData);
         }
