@@ -1,5 +1,6 @@
 import * as functions from "firebase-functions";
 import axios from "axios";
+import { ComicData } from "../types/comic";
 
 const config = {
   headers: {
@@ -14,22 +15,6 @@ const discord_url = functions.config().discord.webhook;
 admin.initializeApp(functions.config().firebase);
 const fireStore = admin.firestore();
 
-type ComicData = {
-  comicData: {
-    name: string;
-    Serialization: string;
-    url: string;
-  };
-  episodeData: {
-    name: string;
-    url: string;
-    update_date: string;
-  };
-  nameNonSlash: {
-    comic: string;
-    episode: string;
-  };
-};
 const setFirestore = async (data: ComicData[]) => {
   data.forEach((d) => {
     const comicRef = fireStore.collection("comics").doc(d.nameNonSlash.comic);
@@ -37,7 +22,7 @@ const setFirestore = async (data: ComicData[]) => {
       .get()
       .then((doc: any) => {
         if (!doc.exists) {
-          comicRef.set(d.comicData);
+          comicRef.set(d.titleData);
         }
       })
       .catch((err: any) => {
@@ -46,7 +31,7 @@ const setFirestore = async (data: ComicData[]) => {
 
     const episodeRef = fireStore
       .collection("comics")
-      .doc(d.comicData.name)
+      .doc(d.titleData.name)
       .collection("episodes")
       .doc(d.nameNonSlash.episode);
     episodeRef
@@ -55,12 +40,12 @@ const setFirestore = async (data: ComicData[]) => {
         if (!doc.exists) {
           //送信するデータ
 
-          console.log(d.comicData.name, d.episodeData.name);
+          console.log(d.titleData.name, d.episodeData.name);
 
           //送信するデータ
           const postData = {
             username: "webcomic BOT",
-            content: `@everyone \n${d.comicData.name}\n${d.episodeData.name}\n${d.episodeData.url}`,
+            content: `${d.titleData.name}\n${d.episodeData.name}\n${d.episodeData.url}`,
           };
 
           // 2秒スリープ
