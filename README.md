@@ -1,4 +1,4 @@
-https://user-images.githubusercontent.com/43399066/86884715-eef65980-c12e-11ea-8854-effb84a07bb6.png
+![comic_notification](https://user-images.githubusercontent.com/43399066/86884715-eef65980-c12e-11ea-8854-effb84a07bb6.png)
 
 # 運用方法
 
