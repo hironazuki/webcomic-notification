@@ -18,7 +18,7 @@
     "@types/puppeteer": "^3.0.1",
     "axios": "^0.19.2",
     "dotenv": "^8.2.0",
-    "firebase-admin": "^8.10.0",
+    "firebase-admin": "^11.4.1",
     "firebase-functions": "^3.6.1",
     "puppeteer": "^2.1.1"
   },
